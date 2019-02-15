@@ -1,4 +1,4 @@
-# PSC-Syslog-connector-OSS
+# PSC-Syslog-Connector-OSS
 Syslog connector for Carbon Black PSC
 
 ## Description
