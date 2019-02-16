@@ -14,14 +14,19 @@ from sys import exit
 # Classes
 
 class PSCAPI:
-	url_path = '/integrationServices/v3/notification'
+	path_notification = '/integrationServices/v3/notification'
 
 	def __init__(self, server, api_key, con_id):
+		self.server = server
 		self.api_token = api_key + '/' + con_id
-		self.url = urljoin(server, self.url_path)
+		
 
-	def get(self):
-		req = urllib.request.Request(self.url)
+	def getNotification(self):
+		url = urljoin(server, self.path_notification)
+		return self._get(url)
+
+	def _get(self, url):
+		req = urllib.request.Request(url)
 		req.add_header('X-Auth-Token', self.api_token)    # IMDL: multiple headder
 
 		try:
@@ -149,9 +154,11 @@ con_id = config.get('cbdefense1', 'connector_id')
 # Get Alert from PSC
 ll.write('Getting json started.')
 papi = PSCAPI(server, api_key, con_id)
-resp_body = papi.get()
+resp_body = papi.getNotification()
 del papi
-
+'''
+resp_body = '{"notifications":[{"threatInfo":{"incidentId":"ZI9P3OKA","score":4,"summary":"The application powershell.exe is executing a fileless script or command.","indicators":[{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"FILELESS"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"BYPASS_POLICY"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"NETWORK_ACCESS"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"ACTIVE_CLIENT"}],"time":1545887527663},"url":"https://defense-eap01.conferdeploy.net/investigate?s[searchWindow]=ALL&s[c][DEVICE_ID][0]=13572&s[c][INCIDENT_ID][0]=ZI9P3OKA","eventTime":1545887156463,"eventDescription":"[Hideki_All_Alerts] [Carbon Black has detected a threat against your company.] [https://defense-eap01.conferdeploy.net#device/13572/incident/ZI9P3OKA] [The application powershell.exe is executing a fileless script or command.] [Incident id: ZI9P3OKA] [Threat score: 4] [Group: NoBlockingPolicy] [Email: yamada] [Name: WIN-CSRBJ10S00Q] [Type and OS: WINDOWS Windows 8 x64] [Severity: Monitored]\n","deviceInfo":{"email":"yamada","deviceName":"WIN-CSRBJ10S00Q","groupName":"NoBlockingPolicy","internalIpAddress":"172.16.223.129","externalIpAddress":"39.110.203.184","deviceType":"WINDOWS","deviceVersion":"Windows 8 x64","targetPriorityType":"MEDIUM","deviceId":13572,"deviceHostName":null,"targetPriorityCode":0},"ruleName":"Hideki_All_Alerts","type":"THREAT"}],"success":true,"message":"Success"}'
+'''
 ll.write('Getting json finished.')
 
 
