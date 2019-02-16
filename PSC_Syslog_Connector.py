@@ -156,9 +156,6 @@ ll.write('Getting json started.')
 papi = PSCAPI(server, api_key, con_id)
 resp_body = papi.getNotification()
 del papi
-'''
-resp_body = '{"notifications":[{"threatInfo":{"incidentId":"ZI9P3OKA","score":4,"summary":"The application powershell.exe is executing a fileless script or command.","indicators":[{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"FILELESS"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"BYPASS_POLICY"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"NETWORK_ACCESS"},{"applicationName":"powershell.exe","sha256Hash":"9450421392f7399e93f348325d714ed40e97f3231f1b417a13aa05d3d3530cdb","indicatorName":"ACTIVE_CLIENT"}],"time":1545887527663},"url":"https://defense-eap01.conferdeploy.net/investigate?s[searchWindow]=ALL&s[c][DEVICE_ID][0]=13572&s[c][INCIDENT_ID][0]=ZI9P3OKA","eventTime":1545887156463,"eventDescription":"[Hideki_All_Alerts] [Carbon Black has detected a threat against your company.] [https://defense-eap01.conferdeploy.net#device/13572/incident/ZI9P3OKA] [The application powershell.exe is executing a fileless script or command.] [Incident id: ZI9P3OKA] [Threat score: 4] [Group: NoBlockingPolicy] [Email: yamada] [Name: WIN-CSRBJ10S00Q] [Type and OS: WINDOWS Windows 8 x64] [Severity: Monitored]\n","deviceInfo":{"email":"yamada","deviceName":"WIN-CSRBJ10S00Q","groupName":"NoBlockingPolicy","internalIpAddress":"172.16.223.129","externalIpAddress":"39.110.203.184","deviceType":"WINDOWS","deviceVersion":"Windows 8 x64","targetPriorityType":"MEDIUM","deviceId":13572,"deviceHostName":null,"targetPriorityCode":0},"ruleName":"Hideki_All_Alerts","type":"THREAT"}],"success":true,"message":"Success"}'
-'''
 ll.write('Getting json finished.')
 
 
