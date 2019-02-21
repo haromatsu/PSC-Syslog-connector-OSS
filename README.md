@@ -12,7 +12,7 @@ Python 3.6.3+
 This software supports only CBD Alerts. ThreatHunter is not supported yet. 
 
 ## Usage
-1. Save *PSC_Syslog_Connector.py* and *config.ini* in the same directory.  
-2. Modify *config.ini*.  
-3. Run *PSC_Syslog_Connector.py*.  
+* Save *PSC_Syslog_Connector.py* and *config.ini* in the same directory.  
+* Modify *config.ini*.  
+* Run *PSC_Syslog_Connector.py*.  
 
