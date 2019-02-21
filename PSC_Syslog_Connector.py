@@ -12,7 +12,6 @@ from sys import exit
 
 ##############################################################################
 # Classes
-
 class PSCAPI:
 	path_notification = '/integrationServices/v3/notification'
 
@@ -22,7 +21,7 @@ class PSCAPI:
 		
 
 	def getNotification(self):
-		url = urljoin(server, self.path_notification)
+		url = urljoin(self.server, self.path_notification)
 		return self._get(url)
 
 	def _get(self, url):
@@ -32,12 +31,11 @@ class PSCAPI:
 		try:
 			with urllib.request.urlopen(req) as res:
 				body = res.read()
-			return body.decode('utf-8')
-
+			return 'success', body.decode('utf-8')
 		except urllib.error.HTTPError as err:
-			exit(str(err.code)) #IMDL Debug log
+			return 'HTTPError', str(err.code)
 		except urllib.error.URLError as err:
-			exit(str(err.reason)) #IMDL Debug log
+			return 'URLError', str(err.reason)
 
 
 class PSCJsonAlert:
@@ -76,7 +74,6 @@ class PSCJsonAlert:
 		return _output_str[:-1]
 
 
-
 	def _mkAltExtension(self, per_alert_dict):
 		_extension = OrderedDict()
 		eventtime = per_alert_dict['threatInfo']['time'] # Should I use 'eventTime' instead of 'time'?
@@ -105,13 +102,13 @@ class SendSyslog:
 	def __init__(self, syslog_server_port, facility):
 		syslog_server, syslog_port = syslog_server_port.split(':')
 		self.my_syslog = logging.getLogger('MySyslog')
-		self.my_syslog.setLevel(logging.DEBUG)
+		self.my_syslog.setLevel(logging.DEBUG) #IMCL.
 		handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility=facility) #IMCL facility
 		formatter = logging.Formatter('%(message)s') 
 		handler.setFormatter(formatter)
 		self.my_syslog.addHandler(handler)
 
-	def send(self, msg, priority):
+	def send(self, priority, msg):
 		#alert, emerg, notice are not supported in python logging module.
 		if priority == 'debug':
 				self.my_syslog.debug(msg)
@@ -126,61 +123,99 @@ class SendSyslog:
 		
 
 class LocalLogging:
-	def __init__(self, filename, level): #IMDL Write log to a file.
-		self.llogger = logging.getLogger('LocalLogging')
-		self.llogger.setLevel(logging.DEBUG)
-		stream_handler = StreamHandler()
-		stream_handler.setLevel(logging.DEBUG)
-		handler_format = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s')
-		stream_handler.setFormatter(handler_format)
-		self.llogger.addHandler(stream_handler)
+	_log_disable_flag = False
+	_log_format = '%(asctime)s : %(levelname)s : %(message)s'
 
-	def write(self, msg):
-		self.llogger.info(msg)
+	def __init__(self, log_file, level):
+		self.llogger = logging.getLogger('LocalLogging')
+#		self.llogger.setLevel(logging.INFO)	
+		self._setLoggingLevel(level)
+
+		if not log_file:
+			self._log_disable_flag = True
+			return
+		elif log_file == 'STDOUT':
+			file_handler = StreamHandler()
+		else:
+#			file_handler = logging.FileHandler(filename=log_file)
+			file_handler = logging.FileHandler(log_file, 'a', 'utf-8')
+
+
+		file_handler.setLevel(logging.DEBUG)
+		handler_format = logging.Formatter(self._log_format)
+		file_handler.setFormatter(handler_format)
+		self.llogger.addHandler(file_handler)
+
+
+	def _setLoggingLevel(self, level):
+		if level == 'debug':
+				self.llogger.setLevel(logging.DEBUG)	
+		elif level == 'info':
+				self.llogger.setLevel(logging.INFO)	
+		elif level == 'warn':
+				self.llogger.setLevel(logging.WARN)	
+		elif level == 'error':
+				self.llogger.setLevel(logging.ERROR)	
+		elif level == 'critical':
+				self.llogger.setLevel(logging.CRITICAL)	
+
+
+	def write(self, level, msg):
+		if self._log_disable_flag == True:
+			return
+
+		if level == 'debug':
+				self.llogger.debug(msg)
+		elif level == 'info':
+				self.llogger.info(msg)
+		elif level == 'warn':
+				self.llogger.warn(msg)
+		elif level == 'error':
+				self.llogger.error(msg)
+		elif level == 'critical':
+				self.llogger.critical(msg)
 
 
 
 ##############################################################################
 # main()
-ll = LocalLogging(1,2)
-ll.write('Start')
 config = configparser.ConfigParser()
 config.read('config.ini', 'UTF-8')
-server = config.get('cbdefense1', 'server_url')
-api_key = config.get('cbdefense1', 'api_key')
-con_id = config.get('cbdefense1', 'connector_id')
 
+ll = LocalLogging(config.get('connector_log', 'log_file'), config.get('connector_log', 'log_level'))
+
+ll.write('info','Start')
 
 # Get Alert from PSC
-ll.write('Getting json started.')
-papi = PSCAPI(server, api_key, con_id)
-resp_body = papi.getNotification()
+ll.write('debug', 'Getting json started.')
+papi = PSCAPI(config.get('cbdefense1', 'server_url'), config.get('cbdefense1', 'api_key'), config.get('cbdefense1', 'connector_id'))
+http_stat, resp_body = papi.getNotification()
 del papi
-ll.write('Getting json finished.')
-
+if http_stat != 'success':
+	ll.write('debug', http_stat + ':' + resp_body)
+	exit()
+	
+ll.write('debug', resp_body)
+ll.write('debug', 'Getting json finished.')
 
 # Parse response body
-connector_name = config.get('cbdefense1', 'connector_name')
-pja = PSCJsonAlert(resp_body, connector_name)
+pja = PSCJsonAlert(resp_body, config.get('cbdefense1', 'connector_name'))
 output_list = pja.getOutputList() #Get each output str in list format.
 
 alt_cnt = len(output_list)
-ll.write('Alert count:' + str(alt_cnt))
+ll.write('info', 'Alert count:' + str(alt_cnt))
 
 if not alt_cnt:
-	ll.write('Finished.')
+	ll.write('info', 'Finished.')
 	exit()
 
 #Send syslog
-ll.write('Sending syslog started.')
-syslog_server_port = config.get('general', 'udp_out')
-syslog_facility = config.get('general', 'facility')
-syslog_priority = config.get('general', 'priority')
-ss = SendSyslog(syslog_server_port, syslog_facility)
+ll.write('debug', 'Sending syslog started.')
+ss = SendSyslog(config.get('general', 'udp_out'), config.get('general', 'facility'))
 
 for msg in output_list:
-	ss.send(msg, syslog_priority)
+	ss.send(config.get('general', 'priority'), msg)
 
-ll.write('Finished.')
+ll.write('info', 'Finished.')
 
 
