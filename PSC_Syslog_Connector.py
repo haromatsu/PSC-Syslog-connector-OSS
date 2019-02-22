@@ -58,8 +58,8 @@ class PSCJsonAlert:
 		#fixed strings might change in a future release.
 		_output['source'] = self.connector_name
 		_output['version']= 'CEF:0'
-		_output['vendor'] = 'Carbon Black Japan'
-		_output['product'] = 'PSC_Alart_Syslog_Connector_oss'
+		_output['vendor'] = 'CBJ'
+		_output['product'] = 'PSC_Syslog_Connector_oss'
 		_output['dev_version'] = '1.0'
 		_output['signature'] = 'Active_Threat' # "Signature" is always "Active_Threat".
 		_output['name'] = per_alert_dict['threatInfo']['summary']
