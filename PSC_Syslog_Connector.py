@@ -18,7 +18,6 @@ class PSCAPI:
 	def __init__(self, server, api_key, con_id):
 		self.server = server
 		self.api_token = api_key + '/' + con_id
-		
 
 	def getNotification(self):
 		url = urljoin(self.server, self.path_notification)
