@@ -10,7 +10,9 @@ This application is not official Carbon Black product. Carbon Black doesn't offe
 
 ## Difference between .py and .exe
 They have the same feature. *.exe* was build by pyinstaller with the following command.  
-'''pyinstaller PSC_Syslog_Connector.py --onefile'''
+'''
+pyinstaller PSC_Syslog_Connector.py --onefile
+'''
 
 ## System Requirements
 * Python 3.6.3+  
