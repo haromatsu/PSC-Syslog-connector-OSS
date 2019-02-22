@@ -9,7 +9,7 @@ This application only supports CBD Alerts. ThreatHunter is not supported yet.
 This application is not official Carbon Black product. Carbon Black doesn't offer any support for this application. Please use it at your own risk.
 
 ## Difference between .py and .exe
-They have the same feature. *.exe* was build by pyinstaller with the following command.  
+*.exe* was build by pyinstaller with the following command. They have the same feature.
 ```
 pyinstaller PSC_Syslog_Connector.py --onefile
 ```
