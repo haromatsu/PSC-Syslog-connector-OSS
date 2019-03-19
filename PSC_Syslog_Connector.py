@@ -57,8 +57,8 @@ class PSCJsonAlert:
 		#fixed strings might change in a future release.
 		_output['source'] = self.connector_name
 		_output['version']= 'CEF:0'
-		_output['vendor'] = 'CBJ'
-		_output['product'] = 'PSC_Syslog_Connector_oss'
+		_output['vendor'] = vendor
+		_output['product'] = product
 		_output['dev_version'] = '1.0'
 		_output['signature'] = 'Active_Threat' # "Signature" is always "Active_Threat".
 		_output['name'] = per_alert_dict['threatInfo']['summary']
@@ -180,6 +180,16 @@ class LocalLogging:
 # main()
 config = configparser.ConfigParser()
 config.read('config.ini', 'UTF-8')
+
+# Allow vendor/product setting to be overwritten.
+if config.has_option('general', 'vendor'):
+	vendor = config.get('general', 'vendor')
+else:
+	vendor = 'CBJ'
+if config.has_option('general', 'product'):
+	product = config.get('general', 'product')
+else:
+	product = 'PSC_Syslog_Connector_oss'
 
 ll = LocalLogging(config.get('connector_log', 'log_file'), config.get('connector_log', 'log_level'))
 
