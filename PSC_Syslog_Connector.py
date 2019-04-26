@@ -8,7 +8,28 @@ from urllib.parse import urljoin
 from datetime import datetime
 from sys import exit
 
-
+CONFIG_FILENAME = 'config.ini'
+CONFIG_SECTION_GENERAL = 'general'
+CONFIG_SECTION_CBD1 = 'cbdefense1'
+CONFIG_SECTION_CBD2 = 'cbdefense2'
+CONFIG_SECTION_LOGS = 'connector_log'
+CONFIG_LABEL_VENDOR = 'vendor'
+CONFIG_LABEL_PRODUCT = 'product'
+CONFIG_LABEL_LOGFILE = 'log_file'
+CONFIG_LABEL_LOGLEVEL = 'log_level'
+CONFIG_LABEL_SERVERURL = 'server_url'
+CONFIG_LABEL_APIKEY = 'api_key'
+CONFIG_LABEL_CNNCTRID = 'connector_id'
+CONFIG_LABEL_CNNCTRNAME = 'connector_name'
+#
+LOG_LEVEL_DEBUG = 'debug'
+LOG_LEVEL_INFO = 'info'
+LOG_LEVEL_WARN = 'warn'
+LOG_LEVEL_ERROR = 'error'
+LOG_LEVEL_CRITICAL = 'critical'
+#
+DEFAULT_VENDOR = 'CBJ'
+DEFAULT_PRODUCT = 'PSC_Syslog_Connector_oss'
 
 ##############################################################################
 # Classes
@@ -109,15 +130,15 @@ class SendSyslog:
 
 	def send(self, priority, msg):
 		#alert, emerg, notice are not supported in python logging module.
-		if priority == 'debug':
+		if priority == LOG_LEVEL_DEBUG:
 				self.my_syslog.debug(msg)
-		elif priority == 'info':
+		elif priority == LOG_LEVEL_INFO:
 				self.my_syslog.info(msg)
-		elif priority == 'warn':
+		elif priority == LOG_LEVEL_WARN:
 				self.my_syslog.warn(msg)
-		elif priority == 'error':
+		elif priority == LOG_LEVEL_ERROR:
 				self.my_syslog.error(msg)
-		elif priority == 'critical':
+		elif priority == LOG_LEVEL_CRITICAL:
 				self.my_syslog.critical(msg)
 		
 
@@ -147,15 +168,15 @@ class LocalLogging:
 
 
 	def _setLoggingLevel(self, level):
-		if level == 'debug':
+		if level == LOG_LEVEL_DEBUG:
 				self.llogger.setLevel(logging.DEBUG)	
-		elif level == 'info':
+		elif level == LOG_LEVEL_INFO:
 				self.llogger.setLevel(logging.INFO)	
-		elif level == 'warn':
+		elif level == LOG_LEVEL_WARN:
 				self.llogger.setLevel(logging.WARN)	
-		elif level == 'error':
+		elif level == LOG_LEVEL_ERROR:
 				self.llogger.setLevel(logging.ERROR)	
-		elif level == 'critical':
+		elif level == LOG_LEVEL_CRITICAL:
 				self.llogger.setLevel(logging.CRITICAL)	
 
 
@@ -163,15 +184,15 @@ class LocalLogging:
 		if self._log_disable_flag == True:
 			return
 
-		if level == 'debug':
+		if level == LOG_LEVEL_DEBUG:
 				self.llogger.debug(msg)
-		elif level == 'info':
+		elif level == LOG_LEVEL_INFO:
 				self.llogger.info(msg)
-		elif level == 'warn':
+		elif level == LOG_LEVEL_WARN:
 				self.llogger.warn(msg)
-		elif level == 'error':
+		elif level == LOG_LEVEL_ERROR:
 				self.llogger.error(msg)
-		elif level == 'critical':
+		elif level == LOG_LEVEL_CRITICAL:
 				self.llogger.critical(msg)
 
 
@@ -179,52 +200,52 @@ class LocalLogging:
 ##############################################################################
 # main()
 config = configparser.ConfigParser()
-config.read('config.ini', 'UTF-8')
+config.read(CONFIG_FILENAME, 'UTF-8')
 
 # Allow vendor/product setting to be overwritten.
-if config.has_option('general', 'vendor'):
-	vendor = config.get('general', 'vendor')
+if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR):
+	vendor = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR)
 else:
-	vendor = 'CBJ'
-if config.has_option('general', 'product'):
-	product = config.get('general', 'product')
+	vendor = DEFAULT_VENDOR
+if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT):
+	product = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT)
 else:
-	product = 'PSC_Syslog_Connector_oss'
+	product = DEFAULT_PRODUCT
 
-ll = LocalLogging(config.get('connector_log', 'log_file'), config.get('connector_log', 'log_level'))
+ll = LocalLogging(config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE), config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
 
-ll.write('info','Start')
+ll.write(LOG_LEVEL_INFO,'Start')
 
 # Get Alert from PSC
-ll.write('debug', 'Getting json started.')
-papi = PSCAPI(config.get('cbdefense1', 'server_url'), config.get('cbdefense1', 'api_key'), config.get('cbdefense1', 'connector_id'))
+ll.write(LOG_LEVEL_DEBUG, 'Getting json started.')
+papi = PSCAPI(config.get(CONFIG_SECTION_CBD1, CONFIG_LABEL_SERVERURL), config.get(CONFIG_SECTION_CBD1, CONFIG_LABEL_APIKEY), config.get(CONFIG_SECTION_CBD1, CONFIG_LABEL_CNNCTRID))
 http_stat, resp_body = papi.getNotification()
 del papi
 if http_stat != 'success':
-	ll.write('debug', http_stat + ':' + resp_body)
+	ll.write(LOG_LEVEL_DEBUG, http_stat + ':' + resp_body)
 	exit()
 	
-ll.write('debug', resp_body)
-ll.write('debug', 'Getting json finished.')
+ll.write(LOG_LEVEL_DEBUG, resp_body)
+ll.write(LOG_LEVEL_DEBUG, 'Getting json finished.')
 
 # Parse response body
-pja = PSCJsonAlert(resp_body, config.get('cbdefense1', 'connector_name'))
+pja = PSCJsonAlert(resp_body, config.get(CONFIG_SECTION_CBD1, CONFIG_LABEL_CNNCTRNAME))
 output_list = pja.getOutputList() #Get each output str in list format.
 
 alt_cnt = len(output_list)
-ll.write('info', 'Alert count:' + str(alt_cnt))
+ll.write(LOG_LEVEL_INFO, 'Alert count:' + str(alt_cnt))
 
 if not alt_cnt:
-	ll.write('info', 'Finished.')
+	ll.write(LOG_LEVEL_INFO, 'Finished.')
 	exit()
 
 #Send syslog
-ll.write('debug', 'Sending syslog started.')
-ss = SendSyslog(config.get('general', 'udp_out'), config.get('general', 'facility'))
+ll.write(LOG_LEVEL_DEBUG, 'Sending syslog started.')
+ss = SendSyslog(config.get(CONFIG_SECTION_GENERAL, 'udp_out'), config.get(CONFIG_SECTION_GENERAL, 'facility'))
 
 for msg in output_list:
-	ss.send(config.get('general', 'priority'), msg)
+	ss.send(config.get(CONFIG_SECTION_GENERAL, 'priority'), msg)
 
-ll.write('info', 'Finished.')
+ll.write(LOG_LEVEL_INFO, 'Finished.')
 
 
