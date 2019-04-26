@@ -1,5 +1,7 @@
 import urllib.request
 import json 
+import os
+import argparse
 import configparser
 import logging
 from logging import handlers, StreamHandler
@@ -199,8 +201,28 @@ class LocalLogging:
 
 ##############################################################################
 # main()
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--config-file', '-c', help="Absolute path to configuration file")
+args = parser.parse_args()
+
 config = configparser.ConfigParser()
-config.read(CONFIG_FILENAME, 'UTF-8')
+
+if args.config_file:
+	if os.path.exists(args.config_file):
+		config.read(args.config_file, 'UTF-8')
+	else:
+		print("Cannot locate config file: %s", args.config_file)
+		sys.exit(-1)
+else:
+	path = os.path.dirname(os.path.abspath(__file__)) + os.sep + CONFIG_FILENAME
+	if os.path.exists(path):
+		config.read(path, 'UTF-8')
+	elif os.path.exists(CONFIG_FILENAME):
+		config.read(CONFIG_FILENAME, 'UTF-8')
+	else:
+		print("Cannot locate config file")
+		sys.exit(-1)
 
 # Allow vendor/product setting to be overwritten.
 if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR):
