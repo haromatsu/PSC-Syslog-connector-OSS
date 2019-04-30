@@ -3,6 +3,7 @@ import json
 import os
 import argparse
 import configparser
+import pathlib
 import logging
 from logging import handlers, StreamHandler
 from collections import OrderedDict
@@ -29,6 +30,8 @@ LOG_LEVEL_INFO = 'info'
 LOG_LEVEL_WARN = 'warn'
 LOG_LEVEL_ERROR = 'error'
 LOG_LEVEL_CRITICAL = 'critical'
+#
+LOG_STDOUT = 'STDOUT'
 #
 DEFAULT_VENDOR = 'CBJ'
 DEFAULT_PRODUCT = 'PSC_Syslog_Connector_oss'
@@ -147,27 +150,34 @@ class SendSyslog:
 class LocalLogging:
 	_log_disable_flag = False
 	_log_format = '%(asctime)s : %(levelname)s : %(message)s'
+	_handler = None
 
-	def __init__(self, log_file, level):
+	def __init__(self, log_file, level = LOG_LEVEL_INFO):
 		self.llogger = logging.getLogger('LocalLogging')
-#		self.llogger.setLevel(logging.INFO)	
+		self.open(log_file, level)
+
+	def open(self, log_file, level = LOG_LEVEL_INFO):
 		self._setLoggingLevel(level)
 
 		if not log_file:
 			self._log_disable_flag = True
 			return
-		elif log_file == 'STDOUT':
-			file_handler = StreamHandler()
+		elif log_file == LOG_STDOUT:
+			self._log_disable_flag = False
+			self._handler = StreamHandler()
 		else:
-#			file_handler = logging.FileHandler(filename=log_file)
-			file_handler = logging.FileHandler(log_file, 'a', 'utf-8')
+			self._log_disable_flag = False
+#			self._handler = logging.FileHandler(filename=log_file)
+			self._handler = logging.FileHandler(log_file, 'a', 'utf-8')
 
-
-		file_handler.setLevel(logging.DEBUG)
 		handler_format = logging.Formatter(self._log_format)
-		file_handler.setFormatter(handler_format)
-		self.llogger.addHandler(file_handler)
+		self._handler.setFormatter(handler_format)
+		self.llogger.addHandler(self._handler)
 
+	def reopen(self, log_file, level = LOG_LEVEL_INFO):
+		if self.llogger.hasHandlers():
+			self.llogger.removeHandler(self._handler)
+		self.open(log_file, level)
 
 	def _setLoggingLevel(self, level):
 		if level == LOG_LEVEL_DEBUG:
@@ -180,6 +190,8 @@ class LocalLogging:
 				self.llogger.setLevel(logging.ERROR)	
 		elif level == LOG_LEVEL_CRITICAL:
 				self.llogger.setLevel(logging.CRITICAL)	
+		else:
+				self.llogger.setLevel(logging.INFO)	
 
 
 	def write(self, level, msg):
@@ -196,7 +208,8 @@ class LocalLogging:
 				self.llogger.error(msg)
 		elif level == LOG_LEVEL_CRITICAL:
 				self.llogger.critical(msg)
-
+		else:
+				self.llogger.info(msg)
 
 
 ##############################################################################
@@ -204,38 +217,73 @@ class LocalLogging:
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config-file', '-c', help="Absolute path to configuration file")
+parser.add_argument('--log-file', '-l', help="Log file location")
+parser.add_argument('--log-level', '-L', help="Log output level")
 args = parser.parse_args()
 
-config = configparser.ConfigParser()
+# Temporary setup logging output
+if args.log_file and args.log_level:
+	ll = LocalLogging(args.log_file, args.log_level)
+elif args.log_file:
+	ll = LocalLogging(args.log_file)
+elif args.log_level:
+	ll = LocalLogging(LOG_STDOUT, args.log_level)
+else:
+	ll = LocalLogging(LOG_STDOUT)
 
+config = configparser.ConfigParser()
 if args.config_file:
 	if os.path.exists(args.config_file):
 		config.read(args.config_file, 'UTF-8')
 	else:
-		print("Cannot locate config file: %s", args.config_file)
+		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + args.config_file)
 		sys.exit(-1)
 else:
-	path = os.path.dirname(os.path.abspath(__file__)) + os.sep + CONFIG_FILENAME
+	path = os.path.dirname(os.path.abspath(sys.argv[0])) + os.sep + CONFIG_FILENAME
 	if os.path.exists(path):
 		config.read(path, 'UTF-8')
 	elif os.path.exists(CONFIG_FILENAME):
 		config.read(CONFIG_FILENAME, 'UTF-8')
 	else:
-		print("Cannot locate config file")
+		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + args.config_file)
 		sys.exit(-1)
+
+# Setup logging based on config paramters
+if args.log_file and args.log_level:
+	# Already setup
+	True
+elif args.log_file:
+	if config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL):
+		ll.reopen(args.log_file, config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
+	else:
+		ll.reopen(args.log_file)
+else:
+	if config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE):
+		path = config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE)
+		if path and not pathlib.Path(path).is_absolute():
+			path = os.path.dirname(os.path.abspath(sys.argv[0])) + os.sep + path
+	else:
+		path = None
+	if args.log_level:
+		ll.reopen(path, args.log_level)
+	elif config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL):
+		ll.reopen(path, config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
+	else:
+		ll.reopen(path)
 
 # Allow vendor/product setting to be overwritten.
 if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR):
 	vendor = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR)
+	ll.write(LOG_LEVEL_DEBUG, 'Using Vendor:' + vendor)
 else:
 	vendor = DEFAULT_VENDOR
 if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT):
 	product = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT)
+	ll.write(LOG_LEVEL_DEBUG, 'Using Product:' + product)
 else:
 	product = DEFAULT_PRODUCT
 
-ll = LocalLogging(config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE), config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
-
+# Start processing alerts
 ll.write(LOG_LEVEL_INFO,'Start')
 
 # Get Alert from PSC
