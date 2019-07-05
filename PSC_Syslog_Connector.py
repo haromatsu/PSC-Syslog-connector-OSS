@@ -10,6 +10,7 @@ from collections import OrderedDict
 from urllib.parse import urljoin
 from datetime import datetime
 from sys import exit
+#from subprocess import STDOUT
 
 CONFIG_FILENAME = 'config.ini'
 CONFIG_SECTION_GENERAL = 'general'
@@ -18,6 +19,7 @@ CONFIG_SECTION_CBD2 = 'cbdefense2'
 CONFIG_SECTION_LOGS = 'connector_log'
 CONFIG_LABEL_VENDOR = 'vendor'
 CONFIG_LABEL_PRODUCT = 'product'
+CONFIG_LABEL_DEV_VER = 'dev_version'
 CONFIG_LABEL_LOGFILE = 'log_file'
 CONFIG_LABEL_LOGLEVEL = 'log_level'
 CONFIG_LABEL_SERVERURL = 'server_url'
@@ -35,6 +37,7 @@ LOG_STDOUT = 'STDOUT'
 #
 DEFAULT_VENDOR = 'CBJ'
 DEFAULT_PRODUCT = 'PSC_Syslog_Connector_oss'
+DEFAULT_DEV_VER = '1.0'
 
 ##############################################################################
 # Classes
@@ -74,8 +77,12 @@ class PSCJsonAlert:
 
 	def _mkOutList(self, json_dict):
 		for per_alert_dict in json_dict['notifications']: #If there is no alert, this foreach finishs without loop. 
-			output_str = self._mkPerAltStr(per_alert_dict)
-			self.output_str_list.append(output_str)
+			if 'threatInfo' in per_alert_dict:
+				output_str = self._mkPerAltStr(per_alert_dict)
+				self.output_str_list.append(output_str)
+			if 'policyAction' in per_alert_dict:
+				output_str = self._mkPerAltStr(per_alert_dict)
+				self.output_str_list.append(output_str)
 
 
 	def _mkPerAltStr(self, per_alert_dict):
@@ -85,11 +92,16 @@ class PSCJsonAlert:
 		_output['version']= 'CEF:0'
 		_output['vendor'] = vendor
 		_output['product'] = product
-		_output['dev_version'] = '1.0'
+		_output['dev_version'] = dev_version
 		_output['signature'] = 'Active_Threat' # "Signature" is always "Active_Threat".
-		_output['name'] = per_alert_dict['threatInfo']['summary']
-		_output['severity'] = per_alert_dict['threatInfo']['score']
-		_output['extention'] = self._mkAltExtension(per_alert_dict)
+		if 'threatInfo' in per_alert_dict:
+			_output['name'] = per_alert_dict['threatInfo']['summary']
+			_output['severity'] = per_alert_dict['threatInfo']['score']
+			_output['extention'] = self._mkAltExtension(per_alert_dict)
+		if 'policyAction' in per_alert_dict:
+			_output['name'] = per_alert_dict['eventDescription'].strip()
+			_output['severity'] = '1'
+			_output['extention'] = self._mkAltPolicyAction(per_alert_dict)
 
 		_output_str = ''
 		for v in _output.values():
@@ -97,7 +109,6 @@ class PSCJsonAlert:
 			_output_str += '|'
 
 		return _output_str[:-1]
-
 
 	def _mkAltExtension(self, per_alert_dict):
 		_extension = OrderedDict()
@@ -112,6 +123,26 @@ class PSCJsonAlert:
 		_extension['cs4Label'] = '"Threat_ID"'
 		_extension['cs4'] = '"' + per_alert_dict['threatInfo']['incidentId'] + '"'
 		_extension['act'] = 'Alert'
+
+		_extension_str = ''
+		for k, v in _extension.items():
+			_extension_str += k + '=' + str(v) + ' '
+
+		return _extension_str[:-1]
+
+	def _mkAltPolicyAction(self, per_alert_dict):
+		_extension = OrderedDict()
+		eventtime = per_alert_dict['eventTime'] # Should I use 'eventTime' instead of 'time'?
+		date_str = datetime.fromtimestamp(int(eventtime) / 1000)
+		_extension['rt'] = '"' + date_str.strftime('%b %d %Y %H:%M:%S') + '"'  # Format = Dec 06 2018 22:04:53
+		_extension['dvchost'] = per_alert_dict['deviceInfo']['deviceName'] 
+		_extension['duser'] = per_alert_dict['deviceInfo']['email'] 
+		_extension['dvc'] = per_alert_dict['deviceInfo']['internalIpAddress'] 
+		_extension['cs3Label'] = '"Link"'
+		_extension['cs3'] = '"' + per_alert_dict['url'] + '"'
+#		_extension['cs4Label'] = '"Threat_ID"'
+#		_extension['cs4'] = '"' + per_alert_dict['policyAction']['incidentId'] + '"'
+		_extension['act'] = per_alert_dict['policyAction']['action']
 
 		_extension_str = ''
 		for k, v in _extension.items():
@@ -136,15 +167,15 @@ class SendSyslog:
 	def send(self, priority, msg):
 		#alert, emerg, notice are not supported in python logging module.
 		if priority == LOG_LEVEL_DEBUG:
-				self.my_syslog.debug(msg)
+			self.my_syslog.debug(msg)
 		elif priority == LOG_LEVEL_INFO:
-				self.my_syslog.info(msg)
+			self.my_syslog.info(msg)
 		elif priority == LOG_LEVEL_WARN:
-				self.my_syslog.warn(msg)
+			self.my_syslog.warn(msg)
 		elif priority == LOG_LEVEL_ERROR:
-				self.my_syslog.error(msg)
+			self.my_syslog.error(msg)
 		elif priority == LOG_LEVEL_CRITICAL:
-				self.my_syslog.critical(msg)
+			self.my_syslog.critical(msg)
 		
 
 class LocalLogging:
@@ -158,7 +189,6 @@ class LocalLogging:
 
 	def open(self, log_file, level = LOG_LEVEL_INFO):
 		self._setLoggingLevel(level)
-
 		if not log_file:
 			self._log_disable_flag = True
 			return
@@ -167,7 +197,6 @@ class LocalLogging:
 			self._handler = StreamHandler()
 		else:
 			self._log_disable_flag = False
-#			self._handler = logging.FileHandler(filename=log_file)
 			self._handler = logging.FileHandler(log_file, 'a', 'utf-8')
 
 		handler_format = logging.Formatter(self._log_format)
@@ -181,23 +210,22 @@ class LocalLogging:
 
 	def _setLoggingLevel(self, level):
 		if level == LOG_LEVEL_DEBUG:
-				self.llogger.setLevel(logging.DEBUG)	
+			self.llogger.setLevel(logging.DEBUG)	
 		elif level == LOG_LEVEL_INFO:
-				self.llogger.setLevel(logging.INFO)	
+			self.llogger.setLevel(logging.INFO)	
 		elif level == LOG_LEVEL_WARN:
-				self.llogger.setLevel(logging.WARN)	
+			self.llogger.setLevel(logging.WARN)	
 		elif level == LOG_LEVEL_ERROR:
-				self.llogger.setLevel(logging.ERROR)	
+			self.llogger.setLevel(logging.ERROR)	
 		elif level == LOG_LEVEL_CRITICAL:
-				self.llogger.setLevel(logging.CRITICAL)	
+			self.llogger.setLevel(logging.CRITICAL)	
 		else:
-				self.llogger.setLevel(logging.INFO)	
+			self.llogger.setLevel(logging.INFO)	
 
 
 	def write(self, level, msg):
 		if self._log_disable_flag == True:
 			return
-
 		if level == LOG_LEVEL_DEBUG:
 				self.llogger.debug(msg)
 		elif level == LOG_LEVEL_INFO:
@@ -245,7 +273,7 @@ else:
 	elif os.path.exists(CONFIG_FILENAME):
 		config.read(CONFIG_FILENAME, 'UTF-8')
 	else:
-		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + args.config_file)
+		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + CONFIG_FILENAME)
 		sys.exit(-1)
 
 # Setup logging based on config paramters
@@ -260,7 +288,7 @@ elif args.log_file:
 else:
 	if config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE):
 		path = config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE)
-		if path and not pathlib.Path(path).is_absolute():
+		if path and path != LOG_STDOUT and not pathlib.Path(path).is_absolute():
 			path = os.path.dirname(os.path.abspath(sys.argv[0])) + os.sep + path
 	else:
 		path = None
@@ -281,7 +309,12 @@ if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT):
 	product = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_PRODUCT)
 	ll.write(LOG_LEVEL_DEBUG, 'Using Product:' + product)
 else:
-	product = DEFAULT_PRODUCT
+	dev_version = DEFAULT_PRODUCT
+if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_DEV_VER):
+	dev_version = config.get(CONFIG_SECTION_GENERAL, CONFIG_LABEL_DEV_VER)
+	ll.write(LOG_LEVEL_DEBUG, 'Using Dev_version:' + dev_version)
+else:
+	dev_version = DEFAULT_DEV_VER
 
 # Start processing alerts
 ll.write(LOG_LEVEL_INFO,'Start')
@@ -315,7 +348,7 @@ ss = SendSyslog(config.get(CONFIG_SECTION_GENERAL, 'udp_out'), config.get(CONFIG
 
 for msg in output_list:
 	ss.send(config.get(CONFIG_SECTION_GENERAL, 'priority'), msg)
+	ll.write(LOG_LEVEL_DEBUG, 'Send: ' + msg)
 
 ll.write(LOG_LEVEL_INFO, 'Finished.')
-
 
