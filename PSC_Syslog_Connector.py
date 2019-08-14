@@ -1,3 +1,4 @@
+import sys
 import urllib.request
 import json 
 import os
@@ -115,8 +116,19 @@ class PSCJsonAlert:
 		eventtime = per_alert_dict['threatInfo']['time'] # Should I use 'eventTime' instead of 'time'?
 		date_str = datetime.fromtimestamp(int(eventtime) / 1000)
 		_extension['rt'] = '"' + date_str.strftime('%b %d %Y %H:%M:%S') + '"'  # Format = Dec 06 2018 22:04:53
-		_extension['dvchost'] = per_alert_dict['deviceInfo']['deviceName'] 
-		_extension['duser'] = per_alert_dict['deviceInfo']['email'] 
+		dev_name = per_alert_dict['deviceInfo']['deviceName']
+		if '\\' in dev_name:
+			(domain_name, device) = dev_name.split('\\')
+			_extension['sntdom'] = domain_name
+			_extension['dvchost'] = device
+		else:
+			_extension['dvchost'] = dev_name
+		user_name = per_alert_dict['deviceInfo']['email']
+		if '\\' in user_name:
+			(domain_name, user) = user_name.split('\\')
+			_extension['duser'] = user
+		else:
+			_extension['duser'] = user_name
 		_extension['dvc'] = per_alert_dict['deviceInfo']['internalIpAddress'] 
 		_extension['cs3Label'] = '"Link"'
 		_extension['cs3'] = '"' + per_alert_dict['url'] + '"'
@@ -135,14 +147,25 @@ class PSCJsonAlert:
 		eventtime = per_alert_dict['eventTime'] # Should I use 'eventTime' instead of 'time'?
 		date_str = datetime.fromtimestamp(int(eventtime) / 1000)
 		_extension['rt'] = '"' + date_str.strftime('%b %d %Y %H:%M:%S') + '"'  # Format = Dec 06 2018 22:04:53
-		_extension['dvchost'] = per_alert_dict['deviceInfo']['deviceName'] 
-		_extension['duser'] = per_alert_dict['deviceInfo']['email'] 
+		dev_name = per_alert_dict['deviceInfo']['deviceName']
+		if '\\' in dev_name:
+			(domain_name, device) = dev_name.split('\\')
+			_extension['sntdom'] = domain_name
+			_extension['dvchost'] = device
+		else:
+			_extension['dvchost'] = dev_name
+		user_name = per_alert_dict['deviceInfo']['email']
+		if '\\' in user_name:
+			(domain_name, user) = user_name.split('\\')
+			_extension['duser'] = user
+		else:
+			_extension['duser'] = user_name
 		_extension['dvc'] = per_alert_dict['deviceInfo']['internalIpAddress'] 
 		_extension['cs3Label'] = '"Link"'
 		_extension['cs3'] = '"' + per_alert_dict['url'] + '"'
-#		_extension['cs4Label'] = '"Threat_ID"'
-#		_extension['cs4'] = '"' + per_alert_dict['policyAction']['incidentId'] + '"'
 		_extension['act'] = per_alert_dict['policyAction']['action']
+		_extension['hash'] = per_alert_dict['policyAction']['sha256Hash']
+		_extension['deviceprocessname'] = per_alert_dict['policyAction']['applicationName']
 
 		_extension_str = ''
 		for k, v in _extension.items():
@@ -158,8 +181,8 @@ class SendSyslog:
 	def __init__(self, syslog_server_port, facility):
 		syslog_server, syslog_port = syslog_server_port.split(':')
 		self.my_syslog = logging.getLogger('MySyslog')
-		self.my_syslog.setLevel(logging.DEBUG) #IMCL.
-		handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility=facility) #IMCL facility
+		self.my_syslog.setLevel(logging.DEBUG)
+		handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility = facility)
 		formatter = logging.Formatter('%(message)s') 
 		handler.setFormatter(formatter)
 		self.my_syslog.addHandler(handler)
