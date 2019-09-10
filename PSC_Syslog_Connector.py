@@ -266,6 +266,24 @@ class LocalLogging:
 ##############################################################################
 # main()
 
+def read_config(config_file):
+	if not os.path.exists(config_file):
+		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + config_file)
+		sys.exit(-1)
+	for encoding in ['UTF-8', 'CP932', 'Shift-JIS', 'EUC-JP']:
+		try:
+			config.read(config_file, encoding)
+			return
+		except configparser.NoSectionError:
+			ll.write(LOG_LEVEL_ERROR, "Config format error: " + config_file)
+			sys.exit(-1)
+		except UnicodeDecodeError:
+			pass
+		except:
+			pass
+	ll.write(LOG_LEVEL_ERROR, "Config parse error: " + config_file)
+	sys.exit(-1)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--config-file', '-c', help="Absolute path to configuration file")
 parser.add_argument('--log-file', '-l', help="Log file location")
@@ -282,22 +300,16 @@ elif args.log_level:
 else:
 	ll = LocalLogging(LOG_STDOUT)
 
+# Handle config file parsing
 config = configparser.ConfigParser()
 if args.config_file:
-	if os.path.exists(args.config_file):
-		config.read(args.config_file, 'UTF-8')
-	else:
-		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + args.config_file)
-		sys.exit(-1)
+	read_config(args.config_file)
 else:
 	path = os.path.dirname(os.path.abspath(sys.argv[0])) + os.sep + CONFIG_FILENAME
 	if os.path.exists(path):
-		config.read(path, 'UTF-8')
-	elif os.path.exists(CONFIG_FILENAME):
-		config.read(CONFIG_FILENAME, 'UTF-8')
+		read_config(path)
 	else:
-		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + CONFIG_FILENAME)
-		sys.exit(-1)
+		read_config(CONFIG_FILENAME)
 
 # Setup logging based on config paramters
 if args.log_file and args.log_level:
