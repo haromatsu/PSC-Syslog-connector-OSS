@@ -273,7 +273,7 @@ def read_config(config_file):
 	if not os.path.exists(config_file):
 		ll.write(LOG_LEVEL_ERROR, "Cannot locate config file: " + config_file)
 		sys.exit(-1)
-	for encoding in ['UTF-8', 'CP932', 'Shift-JIS', 'EUC-JP']:
+	for encoding in ['UTF-8-SIG', 'UTF-8', 'CP932', 'Shift-JIS', 'EUC-JP']:
 		try:
 			config.read(config_file, encoding)
 			return
