@@ -361,7 +361,7 @@ http_stat, resp_body = papi.getNotification()
 del papi
 if http_stat != 'success':
 	ll.write(LOG_LEVEL_DEBUG, http_stat + ':' + resp_body)
-	exit()
+	sys.exit(1)
 	
 ll.write(LOG_LEVEL_DEBUG, resp_body)
 ll.write(LOG_LEVEL_DEBUG, 'Getting json finished.')
@@ -375,7 +375,7 @@ ll.write(LOG_LEVEL_INFO, 'Alert count:' + str(alt_cnt))
 
 if not alt_cnt:
 	ll.write(LOG_LEVEL_INFO, 'Finished.')
-	exit()
+	sys.exit(0)
 
 #Send syslog
 ll.write(LOG_LEVEL_DEBUG, 'Sending syslog started.')
@@ -386,4 +386,4 @@ for msg in output_list:
 	ll.write(LOG_LEVEL_DEBUG, 'Send: ' + msg)
 
 ll.write(LOG_LEVEL_INFO, 'Finished.')
-
+sys.exit(0)
