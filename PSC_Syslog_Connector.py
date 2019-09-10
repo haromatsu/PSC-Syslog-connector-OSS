@@ -23,6 +23,7 @@ CONFIG_LABEL_PRODUCT = 'product'
 CONFIG_LABEL_DEV_VER = 'dev_version'
 CONFIG_LABEL_LOGFILE = 'log_file'
 CONFIG_LABEL_LOGLEVEL = 'log_level'
+CONFIG_LABEL_OVERWRITE = 'log_overwrite'
 CONFIG_LABEL_SERVERURL = 'server_url'
 CONFIG_LABEL_APIKEY = 'api_key'
 CONFIG_LABEL_CNNCTRID = 'connector_id'
@@ -35,6 +36,8 @@ LOG_LEVEL_ERROR = 'error'
 LOG_LEVEL_CRITICAL = 'critical'
 #
 LOG_STDOUT = 'STDOUT'
+LOG_OPENMODE = 'a+'
+LOG_OVERWRITE = 'w+'
 #
 DEFAULT_VENDOR = 'CBJ'
 DEFAULT_PRODUCT = 'PSC_Syslog_Connector_oss'
@@ -206,11 +209,11 @@ class LocalLogging:
 	_log_format = '%(asctime)s : %(levelname)s : %(message)s'
 	_handler = None
 
-	def __init__(self, log_file, level = LOG_LEVEL_INFO):
+	def __init__(self, log_file, level = LOG_LEVEL_INFO, mode = LOG_OPENMODE):
 		self.llogger = logging.getLogger('LocalLogging')
-		self.open(log_file, level)
+		self.open(log_file, level = level, mode = mode)
 
-	def open(self, log_file, level = LOG_LEVEL_INFO):
+	def open(self, log_file, level = LOG_LEVEL_INFO, mode = LOG_OPENMODE):
 		self._setLoggingLevel(level)
 		if not log_file:
 			self._log_disable_flag = True
@@ -220,16 +223,16 @@ class LocalLogging:
 			self._handler = StreamHandler()
 		else:
 			self._log_disable_flag = False
-			self._handler = logging.FileHandler(log_file, 'a', 'utf-8')
+			self._handler = logging.FileHandler(log_file, mode, 'utf-8')
 
 		handler_format = logging.Formatter(self._log_format)
 		self._handler.setFormatter(handler_format)
 		self.llogger.addHandler(self._handler)
 
-	def reopen(self, log_file, level = LOG_LEVEL_INFO):
+	def reopen(self, log_file, level = LOG_LEVEL_INFO, mode = LOG_OPENMODE):
 		if self.llogger.hasHandlers():
 			self.llogger.removeHandler(self._handler)
-		self.open(log_file, level)
+		self.open(log_file, level = level, mode = mode)
 
 	def _setLoggingLevel(self, level):
 		if level == LOG_LEVEL_DEBUG:
@@ -288,15 +291,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config-file', '-c', help="Absolute path to configuration file")
 parser.add_argument('--log-file', '-l', help="Log file location")
 parser.add_argument('--log-level', '-L', help="Log output level")
+parser.add_argument('--log-overwrite', '-W', action='store_true', help="Log overwrite")
 args = parser.parse_args()
 
 # Temporary setup logging output
+if args.log_overwrite:
+	log_overwrite = LOG_OVERWRITE
+else:
+	log_overwrite = LOG_OPENMODE
 if args.log_file and args.log_level:
-	ll = LocalLogging(args.log_file, args.log_level)
+	ll = LocalLogging(args.log_file, level = args.log_level)
 elif args.log_file:
 	ll = LocalLogging(args.log_file)
 elif args.log_level:
-	ll = LocalLogging(LOG_STDOUT, args.log_level)
+	ll = LocalLogging(LOG_STDOUT, level = args.log_level)
 else:
 	ll = LocalLogging(LOG_STDOUT)
 
@@ -312,14 +320,19 @@ else:
 		read_config(CONFIG_FILENAME)
 
 # Setup logging based on config paramters
+if args.log_overwrite:
+	True
+elif config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_OVERWRITE):
+	if config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_OVERWRITE).lower() == 'true':
+		log_overwrite = LOG_OVERWRITE
 if args.log_file and args.log_level:
 	# Already setup
 	True
 elif args.log_file:
 	if config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL):
-		ll.reopen(args.log_file, config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
+		ll.reopen(args.log_file, level = config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL), mode = log_overwrite)
 	else:
-		ll.reopen(args.log_file)
+		ll.reopen(args.log_file, mode = log_overwrite)
 else:
 	if config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE):
 		path = config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGFILE)
@@ -328,11 +341,11 @@ else:
 	else:
 		path = None
 	if args.log_level:
-		ll.reopen(path, args.log_level)
+		ll.reopen(path, level = args.log_level, mode = log_overwrite)
 	elif config.has_option(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL):
-		ll.reopen(path, config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL))
+		ll.reopen(path, level = config.get(CONFIG_SECTION_LOGS, CONFIG_LABEL_LOGLEVEL), mode = log_overwrite)
 	else:
-		ll.reopen(path)
+		ll.reopen(path, mode = log_overwrite)
 
 # Allow vendor/product setting to be overwritten.
 if config.has_option(CONFIG_SECTION_GENERAL, CONFIG_LABEL_VENDOR):
