@@ -1,0 +1,56 @@
+# Makefile to be used on cygwin environment
+
+PROG = PSC_Syslog_Connector.exe
+SRC_FILE = PSC_Syslog_Connector.py
+SPEC_FILE = PSC_Syslog_Connector.spec
+VERSION_FILE = PSC_Syslog_Connector_version.txt
+ICON_FILE = CB.ico
+
+# Build 
+DISTDIR = dist
+TESTDIR = test
+PYINSTALLER = pyinstaller
+PYMAKESPEC = pyi-makespec
+BUILD_OPTS = --onefile --windowed --icon=$(ICON_FILE) --version-file=$(VERSION_FILE)
+
+# Install Package 
+INSTALLER= PSC_Syslog_Connector_Installer.exe
+PACKAGE_CMD = iexpress.exe /N /Q
+PACKAGE_CONF = PSC_Syslog_Connector.sed
+INST_TOOLS = schtasks_setup.bat
+DOC_FILES = config.ini README.txt
+
+all: $(DISTDIR)/$(PROG)
+
+$(SPEC_FILE):
+	$(PYMAKESPEC) $(SRC_FILE) $(BUILD_OPTS)
+
+$(DISTDIR)/$(PROG): $(SRC_FILE) $(SPEC_FILE) $(ICON_FILE) $(VERSION_FILE)
+	$(PYINSTALLER) --clean $(SPEC_FILE)
+
+#$(DISTDIR)/$(PROG): $(SRC_FILE) $(ICON_FILE) $(VERSION_FILE)
+#	$(PYINSTALLER) $(SRC_FILE) --clean $(BUILD_OPTS)
+
+$(TESTDIR)/$(PROG): $(DISTDIR)/$(PROG)
+	mkdir -p $(TESTDIR)
+	cp $(DISTDIR)/$(PROG) $(TESTDIR)/$(PROG)
+
+install: $(TESTDIR)/$(PROG)
+
+run: $(TESTDIR)/$(PROG)
+	$(TESTDIR)/$(PROG)
+
+package: $(INSTALLER)
+
+$(INSTALLER): $(PACKAGE_CONF) $(DISTDIR)/$(PROG) $(INST_TOOLS) $(DOC_FILES)
+	$(PACKAGE_CMD) $(PACKAGE_CONF)
+
+clean:
+	rm -f $(DISTDIR)/$(PROG)
+	rm -f $(TESTDIR)/$(PROG)
+	rm -f $(INSTALLER)
+
+distclean: clean
+	rm -f $(SPEC_FILE)
+	rm -rf $(DISTDIR) build __pycache__
+
