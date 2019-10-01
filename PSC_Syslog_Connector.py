@@ -185,11 +185,7 @@ class SendSyslog:
 		syslog_server, syslog_port = syslog_server_port.split(':')
 		self.my_syslog = logging.getLogger('MySyslog')
 		self.my_syslog.setLevel(logging.DEBUG)
-		try:
-			handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility = facility)
-		except:
-			ll.write(LOG_LEVEL_ERROR, "Syslog setup error: {}".format(sys.exc_info()[1]))
-			sys.exit(-1)
+		handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility = facility)
 		formatter = logging.Formatter('%(message)s') 
 		handler.setFormatter(formatter)
 		self.my_syslog.addHandler(handler)
@@ -396,7 +392,11 @@ if not alt_cnt:
 
 #Send syslog
 ll.write(LOG_LEVEL_DEBUG, 'Sending syslog started.')
-ss = SendSyslog(config.get(CONFIG_SECTION_GENERAL, 'udp_out'), config.get(CONFIG_SECTION_GENERAL, 'facility'))
+try:
+	ss = SendSyslog(config.get(CONFIG_SECTION_GENERAL, 'udp_out'), config.get(CONFIG_SECTION_GENERAL, 'facility'))
+except:
+	ll.write(LOG_LEVEL_ERROR, "Syslog setup error: {}".format(sys.exc_info()[1]))
+	sys.exit(-1)
 
 for msg in output_list:
 	ss.send(config.get(CONFIG_SECTION_GENERAL, 'priority'), msg)
