@@ -185,7 +185,11 @@ class SendSyslog:
 		syslog_server, syslog_port = syslog_server_port.split(':')
 		self.my_syslog = logging.getLogger('MySyslog')
 		self.my_syslog.setLevel(logging.DEBUG)
-		handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility = facility)
+		try:
+			handler = logging.handlers.SysLogHandler(address = (syslog_server,int(syslog_port)), facility = facility)
+		except:
+			ll.write(LOG_LEVEL_ERROR, "Syslog setup error: {}".format(sys.exc_info()[1]))
+			sys.exit(-1)
 		formatter = logging.Formatter('%(message)s') 
 		handler.setFormatter(formatter)
 		self.my_syslog.addHandler(handler)
@@ -373,7 +377,7 @@ papi = PSCAPI(config.get(CONFIG_SECTION_CBD1, CONFIG_LABEL_SERVERURL), config.ge
 http_stat, resp_body = papi.getNotification()
 del papi
 if http_stat != 'success':
-	ll.write(LOG_LEVEL_DEBUG, http_stat + ':' + resp_body)
+	ll.write(LOG_LEVEL_ERROR, http_stat + ':' + resp_body)
 	sys.exit(1)
 	
 ll.write(LOG_LEVEL_DEBUG, resp_body)
