@@ -89,7 +89,7 @@ Please use it at your own risk.
 　　　再確認ください。
 
 (4) 状況：PSC_Syslog.logログファイルに以下のエラーが記録された場合
-　ERROR : Syslog setup error
+　ERROR : Syslog setup error: <エラー内容>
 
 ・対応：以下の手順で問題が解消されるか確認ください。
 　(a) config.ini設定ファイルの udp_out項の設定内容を再確認ください。
