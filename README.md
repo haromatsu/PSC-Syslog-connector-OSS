@@ -14,7 +14,7 @@ Please use it at your own risk.
 ## How To Setup
 ### System Requirements
 * Windows x86-64 environment
-	- Windows 7/Windows 10/Windows Server 2019
+	- Windows 7/Windows 10/Windows Server 2016
 
 ### Installation
 * Using the installer: *PSC_Syslog_Connector_Installer.exe*
@@ -36,8 +36,8 @@ Please use it at your own risk.
 	- *PSC_Syslog_Connector_Installer.py*
 	- *config.ini*
 1. Setup Python environment.
-	- Python      3.6.3+
-	- cbapi       1.4.1+ (Installed with 'pip install cbapi')
+	- Python      3.6.8+
+	- cbapi       1.5.2+ (Installed with 'pip install cbapi')
 
 ### Configuration
 1. Setup PSC Console to send alerts through connector:
@@ -54,9 +54,9 @@ Please use it at your own risk.
 
 ## Building
 ### Build Requirements
-* Python      3.6.3+
-* PyInstaller 3.4+
-* cbapi       1.4.1+ (Installed with 'pip install cbapi')
+* Python      3.6.8+
+* PyInstaller 3.5+
+* cbapi       1.5.2+ (Installed with 'pip install cbapi')
 
 ### Build Instructions
 *PSC_Syslog_Connector.exe* was build by pyinstaller with the following command. 
