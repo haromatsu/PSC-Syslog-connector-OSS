@@ -87,6 +87,9 @@ class PSCJsonAlert:
 			if 'policyAction' in per_alert_dict:
 				output_str = self._mkPerAltStr(per_alert_dict)
 				self.output_str_list.append(output_str)
+			if 'threatHunterInfo' in per_alert_dict:
+				output_str = self._mkPerAltStr(per_alert_dict)
+				self.output_str_list.append(output_str)
 
 
 	def _mkPerAltStr(self, per_alert_dict):
@@ -106,6 +109,10 @@ class PSCJsonAlert:
 			_output['name'] = per_alert_dict['eventDescription'].strip()
 			_output['severity'] = '1'
 			_output['extention'] = self._mkAltPolicyAction(per_alert_dict)
+		if 'threatHunterInfo' in per_alert_dict:
+			_output['name'] = per_alert_dict['threatHunterInfo']['summary']
+			_output['severity'] = per_alert_dict['threatHunterInfo']['score']
+			_output['extention'] = self._mkAltThreatHunter(per_alert_dict)
 
 		_output_str = ''
 		for v in _output.values():
@@ -169,6 +176,39 @@ class PSCJsonAlert:
 		_extension['act'] = per_alert_dict['policyAction']['action']
 		_extension['hash'] = per_alert_dict['policyAction']['sha256Hash']
 		_extension['deviceprocessname'] = per_alert_dict['policyAction']['applicationName']
+
+		_extension_str = ''
+		for k, v in _extension.items():
+			_extension_str += k + '=' + str(v) + ' '
+
+		return _extension_str[:-1]
+
+	def _mkAltThreatHunter(self, per_alert_dict):
+		_extension = OrderedDict()
+		eventtime = per_alert_dict['eventTime'] # Should I use 'eventTime' instead of 'time'?
+		date_str = datetime.fromtimestamp(int(eventtime) / 1000)
+		_extension['rt'] = '"' + date_str.strftime('%b %d %Y %H:%M:%S') + '"'  # Format = Dec 06 2018 22:04:53
+		dev_name = per_alert_dict['deviceInfo']['deviceName']
+		if '\\' in dev_name:
+			(domain_name, device) = dev_name.split('\\')
+			_extension['sntdom'] = domain_name
+			_extension['dvchost'] = device
+		else:
+			_extension['dvchost'] = dev_name
+		user_name = per_alert_dict['deviceInfo']['email']
+		if '\\' in user_name:
+			(domain_name, user) = user_name.split('\\')
+			_extension['duser'] = user
+		else:
+			_extension['duser'] = user_name
+		_extension['dvc'] = per_alert_dict['deviceInfo']['internalIpAddress'] 
+		_extension['cs3Label'] = '"Link"'
+		_extension['cs3'] = '"' + per_alert_dict['url'] + '"'
+		_extension['cs4Label'] = '"Incident_ID"'
+		_extension['cs4'] = '"' + per_alert_dict['threatHunterInfo']['incidentId'] + '"'
+		_extension['act'] = '"' + per_alert_dict['ruleName'] + '"'
+		_extension['hash'] = per_alert_dict['threatHunterInfo']['indicators'][0]['sha256Hash']
+		_extension['deviceprocessname'] = per_alert_dict['threatHunterInfo']['indicators'][0]['applicationName']
 
 		_extension_str = ''
 		for k, v in _extension.items():
